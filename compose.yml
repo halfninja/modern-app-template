@@ -1,0 +1,65 @@
+services:
+  web:
+    image: caddy:2
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./web/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - sbt_data:/root/.sbt
+      - ivy_data:/root/.ivy2
+  backend:
+    image: backend
+    build: ./backend
+    volumes:
+      - backend_build:/app/target
+      - backend_project:/app/project/target
+      - backend_project_project:/app/project/project/target
+    healthcheck:
+      test: "curl --fail http://localhost:8080/ || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    develop:
+      watch:
+      - action: sync
+        path: ./backend/app
+        target: /app/app
+      - action: sync
+        path: ./backend/conf
+        target: /app/conf
+      - action: sync
+        path: ./backend/public
+        target: /app/public
+      - action: rebuild
+        path: ./backend/build.sbt
+    ports:
+      - "8080:8080"
+  frontend:
+    image: frontend
+    build: ./frontend
+    develop:
+      watch:
+      - action: sync
+        path: ./frontend/src
+        target: /app/src
+      - action: sync
+        path: ./frontend/static
+        target: /app/static
+      - action: rebuild
+        path: ./frontend/package.json
+    ports:
+      - "5173:5173"
+    
+volumes:
+  caddy_data:
+  sbt_data:
+  ivy_data:
+  backend_build:
+  backend_project:
+  backend_project_project:
